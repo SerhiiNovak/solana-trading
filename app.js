@@ -20,6 +20,14 @@ const cmcOption = {
   headers: { "X-CMC_PRO_API_KEY": "5485dc90-652a-4405-b793-4c09b538edef" },
 };
 
+const birdEyeOption = {
+  baseURL: "https://public-api.birdeye.so/defi/history_price",
+  headers: {
+    "x-chain": "solana",
+    "X-API-KEY": "ba4231b1eaf24124936d74c319f02477",
+  },
+};
+
 const app = express();
 app.use(express.json());
 
@@ -87,6 +95,57 @@ app.get("/sol-price", async (_, res) => {
     res.json({ error: "Catch error" }).status(500);
   }
 });
+
+// Get transactions of specific token address
+app.get("/get-transactions", async (_, res) => {
+  try {
+    let resultArray = [];
+    const now = Math.round(new Date().getTime() / 1000);
+    const from = now - 15 * 60;
+    const signatures = await connection.getSignaturesForAddress(
+      new PublicKey("st8QujHLPsX3d6HG9uQg9kJ91jFxUgruwsb1hyYXSNd")
+    );
+
+    const lastestSings = signatures.filter(
+      (sign) => sign.blockTime && sign.blockTime >= from
+    );
+    const info = await connection.getParsedTransaction(
+      lastestSings[0].signature,
+      {
+        maxSupportedTransactionVersion: 0,
+      }
+    );
+
+    for (sing of lastestSings) {
+      const info = await connection.getParsedTransaction(
+        lastestSings[0].signature,
+        {
+          maxSupportedTransactionVersion: 0,
+        }
+      );
+
+      const preTotal = getTotal(info.meta.preBalances);
+      const postTotal = getTotal(info.meta.postBalances);
+
+      const deltaAmount = postTotal - preTotal;
+
+      resultArray = [...resultArray, { balance: deltaAmount }];
+    }
+    res.json({ result: resultArray }).status(200);
+  } catch (error) {
+    console.error("###Catch Error###" + error);
+    res.json({ error: "Catch error" }).status(500);
+  }
+});
+
+function getTotal(array) {
+  let total = 0;
+  for (i of array) {
+    total += i;
+  }
+
+  return total;
+}
 
 const PORT = process.env.PORT || 3000;
 
